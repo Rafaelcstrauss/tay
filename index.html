@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Inteligente Escolar - Ambiente Vivo</title>
+    <!-- Carregamento do Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuração do Tailwind para usar a fonte Inter e cores -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-dark': '#1e293b', // slate-800
+                        'secondary-dark': '#334155', // slate-700
+                        'accent-yellow': '#facc15', // yellow-400
+                        'accent-red': '#ef4444', // red-500
+                        'accent-blue': '#3b82f6', // blue-500
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos personalizados para o slider e animações */
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #facc15;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(250, 204, 21, 0.8);
+        }
+
+        .slider-thumb::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #facc15;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(250, 204, 21, 0.8);
+        }
+        
+        /* Estilo para simular o contraste do daltônico (amarelo claro no escuro) */
+        .high-contrast-mode {
+            background-color: black !important;
+            color: #ffff00 !important;
+        }
+
+        /* Estilo para o botão de modo ativo */
+        .mode-active {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+
+        /* Estilo para o botão de toggle ativo */
+        .toggle-active {
+            background-color: #10b981 !important;
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+        }
+
+        @keyframes pulse-alert {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .alert-pulse {
+            animation: pulse-alert 0.5s infinite;
+        }
+
+        /* Ajuste do grid para mobile (2 colunas) e desktop (3 colunas) */
+        @media (max-width: 768px) {
+             #sensor-dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            #sensor-dashboard > div:last-child {
+                grid-column: span 2; /* Faz o último card ocupar 2 colunas no mobile */
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen p-4 sm:p-8 font-sans transition-colors duration-300" id="app-body">
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-white mb-2">Ambiente Vivo</h1>
+            <p class="text-gray-400 text-lg">Painel de Controle Escolar Inteligente</p>
+        </header>
+
+        <!-- ALERTA VISUAL PARA DEFICIÊNCIA AUDITIVA -->
+        <div id="visual-alert" class="hidden p-4 mb-6 rounded-xl bg-red-800 text-white text-center font-bold text-lg alert-pulse transition-all duration-300">
+            ALERTA VISUAL ATIVADO! (Simulação de Luz Piscante)
+        </div>
+
+        <!-- SEÇÃO 1: MONITORAMENTO (3 MEDIDORES) -->
+        <h2 class="text-2xl font-semibold text-gray-300 mb-4 border-b border-gray-700 pb-2">Monitoramento em Tempo Real</h2>
+        
+        <!-- Grid para 3 elementos (ajusta para 2 e 1 no mobile) -->
+        <div id="sensor-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            
+            <!-- CARD: ILUMINAÇÃO -->
+            <div class="bg-primary-dark p-6 rounded-2xl shadow-xl border-t-4 border-accent-yellow">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-300 text-xl font-medium">Iluminação</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-accent-yellow" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.45-4.45a1 1 0 01.707 0l.708.707a1 1 0 010 1.414l-.707.708a1 1 0 11-1.414-1.414l.707-.707zM15 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zm-3.536 5.536a1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 010 1.414zM10 16a1 1 0 01-1 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4-4a1 1 0 01-.707-.293l-.707-.707a1 1 0 111.414-1.414l.707.707a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="text-4xl font-bold text-white mb-2" id="light-value">50%</div>
+                <div class="w-full bg-gray-700 rounded-full h-3">
+                    <div id="light-bar" class="bg-accent-yellow h-3 rounded-full transition-all duration-500" style="width: 50%;"></div>
+                </div>
+            </div>
+
+            <!-- CARD: TEMPERATURA -->
+            <div class="bg-primary-dark p-6 rounded-2xl shadow-xl border-t-4 border-accent-red">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-300 text-xl font-medium">Temperatura</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-accent-red" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9 2a1 1 0 000 2v8a1 1 0 000 2h2a1 1 0 100-2V4a1 1 0 00-1-1H9z" />
+                        <path fill-rule="evenodd" d="M10 18a.75.75 0 01-.75-.75v-1.5a.75.75 0 011.5 0v1.5a.75.75 0 01-.75.75zM10 14a.75.75 0 00-.75.75v1.5a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="text-4xl font-bold text-white mb-2" id="temp-value">25.0°C</div>
+                <div class="w-full bg-gray-700 rounded-full h-3">
+                    <div id="temp-bar" class="bg-accent-red h-3 rounded-full transition-all duration-500" style="width: 50%;"></div>
+                </div>
+            </div>
+
+            <!-- CARD: RUÍDO (Ocupa a linha toda no mobile para balancear) -->
+            <div class="bg-primary-dark p-6 rounded-2xl shadow-xl border-t-4 border-gray-400">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-300 text-xl font-medium">Ruído</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L10 4.414 4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v14a1 1 0 11-2 0V3a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="text-4xl font-bold text-white mb-2" id="noise-value">40dB</div>
+                <div class="w-full bg-gray-700 rounded-full h-3">
+                    <div id="noise-bar" class="bg-gray-400 h-3 rounded-full transition-all duration-500" style="width: 40%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEÇÃO 2: CONTROLES -->
+        <h2 class="text-2xl font-semibold text-gray-300 mb-4 border-b border-gray-700 pb-2">Controles e Modos</h2>
+
+        <div class="bg-primary-dark p-6 rounded-2xl shadow-xl space-y-8 mb-10">
+            
+            <!-- CONTROLE DE INTENSIDADE -->
+            <div>
+                <label for="light-slider" class="block text-xl font-medium text-gray-300 mb-3">Intensidade da Iluminação (<span id="slider-percentage">50</span>%)</label>
+                <input type="range" id="light-slider" min="0" max="100" value="50" class="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb">
+            </div>
+
+            <!-- MODOS DE LUZ -->
+            <div>
+                <p class="text-xl font-medium text-gray-300 mb-3">Modo de Luz</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <button id="mode-fria" onclick="setLightMode('Fria')" class="mode-active transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Fria (Intensa)</button>
+                    <button id="mode-quente" onclick="setLightMode('Quente')" class="transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Quente (Relax)</button>
+                    <button id="mode-dinamica" onclick="setLightMode('Dinâmica')" class="transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Dinâmica (Alerta)</button>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE ACESSIBILIDADE -->
+            <div>
+                <p class="text-xl font-medium text-gray-300 mb-3">Configurações de Acessibilidade</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button id="toggle-contraste" onclick="toggleContrast()" class="transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Contraste (Daltônicos)</button>
+                    <button id="toggle-fonte" onclick="toggleFont()" class="transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Fonte Ampliada</button>
+                    <button id="toggle-antiruido" onclick="toggleAntiNoise()" class="transition-all duration-200 bg-secondary-dark text-white py-3 px-4 rounded-xl font-semibold hover:bg-slate-600">Iluminação Antirruído</button>
+                    <button id="toggle-alerta" onclick="toggleVisualAlert()" class="transition-all duration-200 bg-red-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-700">Alerta Visual</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- SEÇÃO 3: RELATÓRIO MENSAL -->
+        <h2 class="text-2xl font-semibold text-gray-300 mb-4 border-b border-gray-700 pb-2">Relatório Mensal da Sala (Dados Simulados)</h2>
+
+        <div class="bg-primary-dark p-6 rounded-2xl shadow-xl space-y-8">
+            <div id="comfort-analysis">
+                <h3 class="text-xl font-medium text-gray-300 mb-2">Análise de Conforto</h3>
+                <p id="most-comfortable-hours" class="text-white text-3xl font-bold">10:00 - 11:00 e 14:00 - 15:00</p>
+                <p class="text-gray-400 text-sm mt-1">Horários com menor desvio de temperatura ($25^{\circ}C$) e ruído abaixo de $45dB$.</p>
+            </div>
+            
+            <div id="control-usage-chart">
+                <h3 class="text-xl font-medium text-gray-300 mb-4">Uso Mensal dos Controles (Gráfico Simulado)</h3>
+                <div id="chart-container" class="space-y-4">
+                    <!-- Gráfico de barras injetado pelo JS -->
+                </div>
+                <p class="text-gray-400 text-sm mt-4">Total de Interações Registradas: <span id="student-interactions" class="font-bold text-accent-yellow">0</span> vezes. (Conta cliques nos botões de controle)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT JAVASCRIPT -->
+    <script>
+        // Variáveis de Estado Global
+        let currentIntensity = 50;
+        let currentTemp = 25.0;
+        let currentNoise = 40;
+        let currentMode = 'Fria';
+        let isContrast = false;
+        let isFontLarge = false;
+        let isAntiNoise = false;
+        let isVisualAlert = false;
+        let studentInteractionsCount = 0; // Novo contador de interações
+
+        // Mock data para o relatório mensal
+        const monthlyReportData = [
+            { name: 'Intensidade da Luz', usage: 120 },
+            { name: 'Modo de Luz (Fria/Quente)', usage: 85 },
+            { name: 'Alertas Visuais', usage: 50 },
+            { name: 'Modos de Acessibilidade', usage: 35 }
+        ];
+
+        // Elementos DOM
+        const appBody = document.getElementById('app-body');
+        const lightSlider = document.getElementById('light-slider');
+        const sliderPercentage = document.getElementById('slider-percentage');
+        const lightBar = document.getElementById('light-bar');
+        const lightValue = document.getElementById('light-value');
+        const tempValue = document.getElementById('temp-value');
+        const tempBar = document.getElementById('temp-bar');
+        const noiseValue = document.getElementById('noise-value');
+        const noiseBar = document.getElementById('noise-bar');
+        const visualAlertDiv = document.getElementById('visual-alert');
+        const toggleAlertaButton = document.getElementById('toggle-alerta');
+        const studentInteractionsEl = document.getElementById('student-interactions');
+
+
+        // --- Funções de Simulação de Dados em Tempo Real ---
+
+        function simulateSensorData() {
+            // Simula variação de temperatura (24.0 a 28.0)
+            currentTemp = (Math.random() * (28.0 - 24.0) + 24.0).toFixed(1);
+            
+            // Simula variação de ruído (30 a 70 dB)
+            currentNoise = Math.floor(Math.random() * (70 - 30) + 30);
+            
+            // Atualiza a UI
+            updateUI();
+        }
+
+        function updateUI() {
+            // 1. Atualiza Iluminação (Controlado pelo Slider ou Modo)
+            lightValue.textContent = `${currentIntensity}%`;
+            lightBar.style.width = `${currentIntensity}%`;
+
+            // 2. Atualiza Temperatura
+            tempValue.textContent = `${currentTemp}°C`;
+            let tempPercent = Math.min(100, (currentTemp - 20) * 10); // Escala de 20 a 30 (0% a 100%)
+            tempBar.style.width = `${tempPercent}%`;
+
+            // 3. Atualiza Ruído
+            noiseValue.textContent = `${currentNoise}dB`;
+            let noisePercent = Math.min(100, currentNoise); // Assume 100dB como máximo
+            noiseBar.style.width = `${noisePercent}%`;
+
+            // Efeito Anti-Ruído: Se ativo, a intensidade é fixada em um valor relaxante
+            if (isAntiNoise) {
+                // Simulação: fixa a luz em 30% (suave)
+                lightValue.textContent = `30% (Antirruído)`;
+                lightBar.style.width = `30%`;
+            }
+
+            // Exemplo de alerta automático: ruído acima de 65 dB
+            if (currentNoise > 65 && currentMode !== 'Dinâmica' && !isVisualAlert) {
+                // Se o ruído estiver alto e o modo Dinâmico/Alerta não estiver ativo, pisca o fundo suavemente
+                appBody.classList.add('bg-red-900', 'bg-opacity-50');
+            } else {
+                appBody.classList.remove('bg-red-900', 'bg-opacity-50');
+            }
+        }
+        
+        // --- Funções do Relatório Mensal ---
+        function renderMonthlyReport() {
+            // Atualiza o contador de interações em tempo real
+            studentInteractionsEl.textContent = studentInteractionsCount;
+
+            const chartContainer = document.getElementById('chart-container');
+            chartContainer.innerHTML = ''; // Limpa o gráfico anterior
+
+            // Soma total para calcular a porcentagem
+            const totalUsage = monthlyReportData.reduce((sum, item) => sum + item.usage, 0);
+
+            monthlyReportData.forEach(item => {
+                const percentage = Math.round((item.usage / totalUsage) * 100);
+
+                const barHtml = `
+                    <div>
+                        <div class="flex justify-between mb-1 text-sm text-gray-400">
+                            <span>${item.name}</span>
+                            <span class="font-bold text-white">${item.usage} vezes (${percentage}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-4">
+                            <div class="bg-accent-blue h-4 rounded-full transition-all duration-700" style="width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+                chartContainer.insertAdjacentHTML('beforeend', barHtml);
+            });
+        }
+
+        // --- Funções de Interação (Botões e Slider) ---
+
+        // Listener para o Slider de Intensidade
+        // NOTA: O contador de interação é adicionado ao 'change' do slider para evitar contagem excessiva (cada movimento do mouse)
+        lightSlider.addEventListener('change', (e) => {
+            currentIntensity = parseInt(e.target.value);
+            sliderPercentage.textContent = currentIntensity;
+            if (!isAntiNoise) {
+                updateUI();
+            }
+            studentInteractionsCount++;
+            renderMonthlyReport();
+        });
+
+        lightSlider.addEventListener('input', (e) => {
+            currentIntensity = parseInt(e.target.value);
+            sliderPercentage.textContent = currentIntensity;
+        });
+
+
+        // Toggle dos Modos de Luz
+        function setLightMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('#mode-fria, #mode-quente, #mode-dinamica').forEach(btn => btn.classList.remove('mode-active'));
+            
+            if (mode === 'Fria') {
+                document.getElementById('mode-fria').classList.add('mode-active');
+                currentIntensity = 100; // Simula luz intensa
+            } else if (mode === 'Quente') {
+                document.getElementById('mode-quente').classList.add('mode-active');
+                currentIntensity = 30; // Simula luz suave
+            } else if (mode === 'Dinâmica') {
+                document.getElementById('mode-dinamica').classList.add('mode-active');
+                // O modo Dinâmico ativa o Alerta Visual (pisca)
+                isVisualAlert = true;
+                toggleAlertaButton.classList.add('toggle-active');
+                visualAlertDiv.classList.remove('hidden');
+            }
+            if (mode !== 'Dinâmica') {
+                 isVisualAlert = false;
+                 toggleAlertaButton.classList.remove('toggle-active');
+                 visualAlertDiv.classList.add('hidden');
+            }
+            if (!isAntiNoise) {
+                lightSlider.value = currentIntensity;
+                sliderPercentage.textContent = currentIntensity;
+            }
+            updateUI();
+            studentInteractionsCount++; // Conta a interação
+            renderMonthlyReport();
+        }
+
+        // Toggle de Contraste (Daltônicos)
+        function toggleContrast() {
+            isContrast = !isContrast;
+            document.getElementById('toggle-contraste').classList.toggle('toggle-active', isContrast);
+            appBody.classList.toggle('high-contrast-mode', isContrast);
+            studentInteractionsCount++; // Conta a interação
+            renderMonthlyReport();
+        }
+
+        // Toggle de Fonte Ampliada
+        function toggleFont() {
+            isFontLarge = !isFontLarge;
+            document.getElementById('toggle-fonte').classList.toggle('toggle-active', isFontLarge);
+            appBody.classList.toggle('text-lg', isFontLarge);
+            appBody.classList.toggle('text-base', !isFontLarge);
+            studentInteractionsCount++; // Conta a interação
+            renderMonthlyReport();
+        }
+
+        // Toggle de Iluminação Antirruído
+        function toggleAntiNoise() {
+            isAntiNoise = !isAntiNoise;
+            document.getElementById('toggle-antiruido').classList.toggle('toggle-active', isAntiNoise);
+            updateUI(); // Chama para fixar a luz se ativado
+            studentInteractionsCount++; // Conta a interação
+            renderMonthlyReport();
+        }
+        
+        // Toggle de Alerta Visual
+        function toggleVisualAlert() {
+            isVisualAlert = !isVisualAlert;
+            toggleAlertaButton.classList.toggle('toggle-active', isVisualAlert);
+            visualAlertDiv.classList.toggle('hidden', !isVisualAlert);
+            
+            // Se ativado pelo toggle, muda o modo para Dinâmica para indicar o estado
+            if (isVisualAlert) {
+                setLightMode('Dinâmica');
+            } else {
+                setLightMode('Fria'); // Volta ao modo padrão se desativado
+            }
+            studentInteractionsCount++; // Conta a interação
+            renderMonthlyReport();
+        }
+
+
+        // --- Inicialização ---
+
+        window.onload = function() {
+            // Inicia a simulação dos sensores a cada 3 segundos
+            setInterval(simulateSensorData, 3000);
+            updateUI();
+            renderMonthlyReport(); // Renderiza o relatório inicial
+        }
+    </script>
+</body>
+</html>
