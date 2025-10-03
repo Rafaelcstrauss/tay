@@ -242,16 +242,55 @@
         const studentInteractionsEl = document.getElementById('student-interactions');
 
 
-        // --- Funções de Simulação de Dados em Tempo Real ---
+        // --- Funções de Comunicação com Backend ---
+        async function getJson(url) {
+            try {
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return null;
+            }
+        }
 
-        function simulateSensorData() {
-            // Simula variação de temperatura (24.0 a 28.0)
-            currentTemp = (Math.random() * (28.0 - 24.0) + 24.0).toFixed(1);
-            
-            // Simula variação de ruído (30 a 70 dB)
-            currentNoise = Math.floor(Math.random() * (70 - 30) + 30);
-            
-            // Atualiza a UI
+        async function postJson(url, body) {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) throw new Error(`POST ${url} -> ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function pollSensors() {
+            const data = await getJson('/api/sensors');
+            if (!data) return;
+            // Atualiza estados com dados do backend
+            currentIntensity = typeof data.light_percent === 'number' ? data.light_percent : currentIntensity;
+            if (typeof data.temperature_c === 'number') currentTemp = data.temperature_c;
+            if (typeof data.noise_db === 'number') currentNoise = data.noise_db;
+            if (typeof data.mode === 'string') currentMode = data.mode;
+            if (typeof data.visual_alert === 'boolean') isVisualAlert = data.visual_alert;
+
+            // Sincroniza slider e botões de modo
+            lightSlider.value = currentIntensity;
+            sliderPercentage.textContent = currentIntensity;
+            document.querySelectorAll('#mode-fria, #mode-quente, #mode-dinamica').forEach(btn => btn.classList.remove('mode-active'));
+            if (currentMode === 'Fria') document.getElementById('mode-fria').classList.add('mode-active');
+            if (currentMode === 'Quente') document.getElementById('mode-quente').classList.add('mode-active');
+            if (currentMode === 'Dinâmica') document.getElementById('mode-dinamica').classList.add('mode-active');
+
+            // Sincroniza alerta visual
+            toggleAlertaButton.classList.toggle('toggle-active', isVisualAlert);
+            visualAlertDiv.classList.toggle('hidden', !isVisualAlert);
+
             updateUI();
         }
 
@@ -319,7 +358,7 @@
 
         // Listener para o Slider de Intensidade
         // NOTA: O contador de interação é adicionado ao 'change' do slider para evitar contagem excessiva (cada movimento do mouse)
-        lightSlider.addEventListener('change', (e) => {
+        lightSlider.addEventListener('change', async (e) => {
             currentIntensity = parseInt(e.target.value);
             sliderPercentage.textContent = currentIntensity;
             if (!isAntiNoise) {
@@ -327,6 +366,7 @@
             }
             studentInteractionsCount++;
             renderMonthlyReport();
+            await postJson('/api/set_intensity', { value: currentIntensity });
         });
 
         lightSlider.addEventListener('input', (e) => {
@@ -336,7 +376,7 @@
 
 
         // Toggle dos Modos de Luz
-        function setLightMode(mode) {
+        async function setLightMode(mode) {
             currentMode = mode;
             document.querySelectorAll('#mode-fria, #mode-quente, #mode-dinamica').forEach(btn => btn.classList.remove('mode-active'));
             
@@ -365,6 +405,8 @@
             updateUI();
             studentInteractionsCount++; // Conta a interação
             renderMonthlyReport();
+            await postJson('/api/set_mode', { mode });
+            await postJson('/api/set_visual_alert', { visual_alert: isVisualAlert });
         }
 
         // Toggle de Contraste (Daltônicos)
@@ -387,36 +429,44 @@
         }
 
         // Toggle de Iluminação Antirruído
-        function toggleAntiNoise() {
+        async function toggleAntiNoise() {
             isAntiNoise = !isAntiNoise;
             document.getElementById('toggle-antiruido').classList.toggle('toggle-active', isAntiNoise);
+            if (isAntiNoise) {
+                currentIntensity = 30;
+                lightSlider.value = currentIntensity;
+                sliderPercentage.textContent = currentIntensity;
+                await postJson('/api/set_intensity', { value: currentIntensity });
+            }
             updateUI(); // Chama para fixar a luz se ativado
             studentInteractionsCount++; // Conta a interação
             renderMonthlyReport();
         }
         
         // Toggle de Alerta Visual
-        function toggleVisualAlert() {
+        async function toggleVisualAlert() {
             isVisualAlert = !isVisualAlert;
             toggleAlertaButton.classList.toggle('toggle-active', isVisualAlert);
             visualAlertDiv.classList.toggle('hidden', !isVisualAlert);
             
             // Se ativado pelo toggle, muda o modo para Dinâmica para indicar o estado
             if (isVisualAlert) {
-                setLightMode('Dinâmica');
+                await setLightMode('Dinâmica');
             } else {
-                setLightMode('Fria'); // Volta ao modo padrão se desativado
+                await setLightMode('Fria'); // Volta ao modo padrão se desativado
             }
             studentInteractionsCount++; // Conta a interação
             renderMonthlyReport();
+            await postJson('/api/set_visual_alert', { visual_alert: isVisualAlert });
         }
 
 
         // --- Inicialização ---
 
         window.onload = function() {
-            // Inicia a simulação dos sensores a cada 3 segundos
-            setInterval(simulateSensorData, 3000);
+            // Inicia a leitura real dos sensores do backend
+            pollSensors();
+            setInterval(pollSensors, 3000);
             updateUI();
             renderMonthlyReport(); // Renderiza o relatório inicial
         }

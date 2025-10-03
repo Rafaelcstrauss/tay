@@ -1,0 +1,127 @@
+(cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF'
+diff --git a/arduino/SmartPanel.ino b/arduino/SmartPanel.ino
+--- a/arduino/SmartPanel.ino
++++ b/arduino/SmartPanel.ino
+@@ -0,0 +1,120 @@
++#include <DHT.h>
++#include <DHT_U.h>
++
++// --- CONFIGURAÇÃO DO LDR ---
++const int ldrPin = A0;   // LDR conectado no pino analógico A0
++const int ledBuiltinPin = 13;   // LED onboard (estado/alerta)
++const int pwmLedPin = 9;  // LED/driver em PWM para controlar intensidade
++
++// --- CONFIGURAÇÃO DO DHT ---
++#define DHTPIN 2         // Pino de dados do DHT11 (por ex., pino digital 2)
++#define DHTTYPE DHT11    // Tipo do sensor
++
++DHT dht(DHTPIN, DHTTYPE);
++
++// Estado atual vindo do servidor
++int currentIntensity = 50;  // 0..100
++String currentMode = "FRIA"; // FRIA | QUENTE | DINAMICA
++bool visualAlert = false;
++
++// Buffer para leitura serial
++String inputLine = "";
++
++void setup() {
++  Serial.begin(9600);
++  // LDR
++  pinMode(ldrPin, INPUT);
++  pinMode(ledBuiltinPin, OUTPUT);
++  pinMode(pwmLedPin, OUTPUT);
++  // DHT
++  dht.begin();
++  // Estado inicial
++  applyIntensity(currentIntensity);
++}
++
++void loop() {
++  // Tratamento de comandos seriais
++  handleSerial();
++
++  // Leitura de sensores
++  int ldrValor = analogRead(ldrPin);
++  float temperatura = dht.readTemperature();
++  float umidade = dht.readHumidity();
++
++  // Publica leituras no formato esperado
++  Serial.print("LDR: ");
++  Serial.print(ldrValor);
++  Serial.print(" | Temperatura: ");
++  Serial.print(temperatura);
++  Serial.print(" °C | Umidade: ");
++  Serial.print(umidade);
++  Serial.println(" %");
++
++  // Alerta visual opcional no LED onboard (piscar leve)
++  if (visualAlert) {
++    digitalWrite(ledBuiltinPin, HIGH);
++    delay(150);
++    digitalWrite(ledBuiltinPin, LOW);
++    delay(150);
++  } else {
++    delay(500);
++  }
++}
++
++void handleSerial() {
++  while (Serial.available() > 0) {
++    char c = (char)Serial.read();
++    if (c == '\n' || c == '\r') {
++      if (inputLine.length() > 0) {
++        parseCommand(inputLine);
++        inputLine = "";
++      }
++    } else {
++      inputLine += c;
++    }
++  }
++}
++
++void parseCommand(String cmd) {
++  cmd.trim();
++  // Exemplos: SET_INTENSITY:70  |  SET_MODE:FRIA  |  SET_ALERT:ON
++  if (cmd.startsWith("SET_INTENSITY:")) {
++    int sep = cmd.indexOf(':');
++    if (sep > 0) {
++      int value = cmd.substring(sep + 1).toInt();
++      value = constrain(value, 0, 100);
++      currentIntensity = value;
++      applyIntensity(currentIntensity);
++    }
++  } else if (cmd.startsWith("SET_MODE:")) {
++    int sep = cmd.indexOf(':');
++    if (sep > 0) {
++      String m = cmd.substring(sep + 1);
++      m.trim();
++      m.toUpperCase();
++      if (m != "FRIA" && m != "QUENTE" && m != "DINAMICA") {
++        m = "FRIA";
++      }
++      currentMode = m;
++      // Opcional: ajustar intensidade por modo
++      if (m == "FRIA") applyIntensity(100);
++      else if (m == "QUENTE") applyIntensity(30);
++      else if (m == "DINAMICA") applyIntensity(70);
++    }
++  } else if (cmd.startsWith("SET_ALERT:")) {
++    int sep = cmd.indexOf(':');
++    if (sep > 0) {
++      String v = cmd.substring(sep + 1);
++      v.trim();
++      v.toUpperCase();
++      visualAlert = (v == "ON");
++    }
++  }
++}
++
++void applyIntensity(int percent) {
++  percent = constrain(percent, 0, 100);
++  int pwm = map(percent, 0, 100, 0, 255);
++  analogWrite(pwmLedPin, pwm);
++}
++
+EOF
+)
