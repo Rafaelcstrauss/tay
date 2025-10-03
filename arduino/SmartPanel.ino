@@ -1,5 +1,4 @@
 #include <DHT.h>
-#include <DHT_U.h>
 
 // --- CONFIGURAÇÃO DO LDR ---
 const int ldrPin = A0;   // LDR conectado no pino analógico A0
